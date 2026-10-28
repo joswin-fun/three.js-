@@ -1,0 +1,183 @@
+
+
+<html>
+  <head>
+    <title>torusknoop, bol en kubus animatie met schaduw</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style> body { margin: 0;} </style>
+    <meta charset="UTF-8" />
+  </head>
+<body>
+      <script type="importmap">
+          {
+            "imports": {
+              "three": "../build/three.module.js",
+              "three/addons/": "../jsm/"
+          }  }
+      </script>
+
+      <script type="module">
+          import * as THREE from 'three';
+          import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+          import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+    let scene, camera, renderer, gridHelper;
+    //M = mesh
+    let  boxM, torusM, sphereMat;;
+    let ruitjespap = true; let draadframe_sphere = false;
+    let wolken_achtergrond = false;
+   //data tbv de GUI control
+    const data = {
+       'ruitjespap': true,    //true dwz vakje achter ruitjespap is aangevinkt
+       'draadframe_sphere': false,
+       'wolken_achtergrond': false};
+
+    init();
+    play();
+    function init() {
+      scene = new THREE.Scene();
+      window.addEventListener( 'resize', onWindowResize );
+      createBackground();
+      createGrid();
+      createCamera();
+      createAmbientLight();
+      createDirectionalLight();
+      createPlane();
+      createBox();
+      createSphere();
+      createTorus();
+      createRenderer();
+      createGui(); //voor het controlvenster rechts boven
+      createControl();
+      onWindowResize();
+    }
+
+    function createBackground() {
+      if (wolken_achtergrond==false)
+          {const bgColor = new THREE.Color( 0xE6FBFF );
+           scene.background = bgColor;
+           wolken_achtergrond = true;}
+      else
+          {const loader = new THREE.TextureLoader();
+          const bgTexture = loader.load('../textures/cloud.jpg');
+          scene.background = bgTexture;
+          wolken_achtergrond = false;}
+     }
+
+    function createGrid() {
+      const size = 10;
+      const divisions = 10;
+      gridHelper = new THREE.GridHelper( size, divisions );
+      gridHelper.rotation.x = Math.PI / 2;// het ruitjespapier 90 graden draaien
+      scene.add( gridHelper );
+    }
+
+    function createCamera(){
+      camera = new THREE.PerspectiveCamera( 70, window.innerWidth/ window.innerHeight, 1, 1000 );
+      camera.position.set( 0, 0, 4 );
+    }
+
+    //Zonder AmbientLight zijn de niet belichte delen erg donker en is de schaduw zwart
+    function createAmbientLight() {
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+    }
+
+    function createDirectionalLight(){
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 4);
+      directionalLight.position.set(-6,10,0);
+      directionalLight.castShadow = true;  //De lichtbron moet ook schaduw uitzenden
+      scene.add(directionalLight);
+    }
+
+    function createPlane(){
+      const planeG= new THREE.PlaneGeometry(10,2.5,1,1);
+      const planeMat = new THREE.MeshStandardMaterial( { color: 'skyblue',side: THREE.DoubleSide} );
+      const planeM = new THREE.Mesh(planeG, planeMat);
+      planeM.position.set(0, -1, 0)      // De plane staat een plaats naar beneden.
+      planeM.rotation.x = Math.PI / 2;   // Met deze code draait de vloer 90 graden en staat dan horizontaal
+      planeM.receiveShadow = true;       // De vloer ontvangt de schaduw
+      scene.add(planeM);
+    }
+
+    function createBox() {
+      const boxG = new THREE.BoxGeometry();
+      const boxMat = new THREE.MeshStandardMaterial ({ color: 0x00ff00 });
+      boxM = new THREE.Mesh(boxG, boxMat);
+      boxM.position.set(3,0,0);
+      boxM.castShadow = true; // De vormen zenden schaduw die door de vloer wordt ontvangen
+      scene.add(boxM);
+    }
+
+    function createSphere() {
+       const sphereG = new THREE.SphereGeometry(1,32,32);
+       sphereMat = new THREE.MeshPhongMaterial( { color: 0xff0000} );
+
+       const sphereM = new THREE.Mesh(sphereG, sphereMat);
+       sphereM.position.set(0,0.2,0);
+       sphereM.castShadow = true;
+       scene.add(sphereM);
+    }
+
+     function createTorus(){
+       const torusG = new THREE.TorusKnotGeometry(0.5,0.1,64,10,2,3);
+       const torusMat = new THREE.MeshPhongMaterial( { color: 0x00ff00,shininess: 400, specular: 0x222222} );
+       torusM = new THREE.Mesh( torusG, torusMat );
+       torusM.position.set(-3,0,0);        // De torusknoop staat 3 plaatsen naar links
+       torusM.castShadow = true;
+       scene.add( torusM );
+     }
+
+     function createRenderer(){
+       renderer = new THREE.WebGLRenderer( { antialias: true } );
+       renderer.setPixelRatio( window.devicePixelRatio );
+       renderer.setSize( window.innerWidth , window.innerHeight );
+       document.body.appendChild( renderer.domElement );
+       renderer.shadowMap.enabled = true;
+     }
+
+     function createGui() {
+       let gui = new GUI({width: 150});
+       gui.add(data, 'ruitjespap').onChange( gridOnOf);
+       gui.add(data, 'draadframe_sphere').onChange( wireSphereOnOf);
+       gui.add(data, 'wolken_achtergrond').onChange( createBackground);
+       gui.open();
+    }
+
+     function gridOnOf(){
+       if (ruitjespap) {scene.remove(gridHelper), ruitjespap = false;}
+       else {scene.add(gridHelper), ruitjespap = true;}
+     }
+
+     function wireSphereOnOf(){
+       if (draadframe_sphere==false) {sphereMat.wireframe = true; draadframe_sphere = true;}
+       else {sphereMat.wireframe = false; draadframe_sphere = false;}
+     }
+
+     function createControl()  {
+       const controls = new OrbitControls( camera , renderer.domElement);
+       controls.listenToKeyEvents( window );
+        //als default wordt er naar de pijltjestoetsen geluisterd
+    }
+
+     function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize( window.innerWidth , window.innerHeight );
+      }
+
+      function render() {
+        renderer.render( scene, camera );
+    }
+
+      function animate() {
+        boxM.rotation.x += 0.01;  boxM.rotation.y += 0.01;
+        torusM.rotation.x -= 0.01;torusM.rotation.y -= 0.01;
+     }
+
+     function play() {
+       renderer.setAnimationLoop( () => {animate();render();} );
+     }
+   </script>
+  </body>
+</html>
