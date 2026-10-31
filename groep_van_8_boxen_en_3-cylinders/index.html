@@ -1,246 +1,274 @@
-<html>
+<!DOCTYPE html>
+<html lang="nl">
   <head>
-    <title>groep van 8 kubussen en 3 cylinders</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="UTF-8" />
-    <style> body { margin: 0;} </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Groep van 8 kubussen en 3 cylinders</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      canvas {
+        display: block;
+      }
+    </style>
   </head>
-
   <body>
-      <script type="importmap">
-          {
-            "imports": {
-              "three": "../build/three.module.js",
-              "three/addons/": "../jsm/"
-          }
-    }
-      </script>
-
-      <script type="module">
-          import * as THREE from 'three';
-          import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-          import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-
-          let camera, renderer, scene, groep, gridHelper;
-          let wolken_achtergrond = false,  ruitjespap = true;
-//boxen publiek declareren omdat ze ook in opacityChange() en boxPosChange() worden gebruikt
-          let box1M,  box2M,  box3M,  box4M,  box5M,  box6M,  box7M,  box8M;
-          let box1G,  box2G,  box3G,  box4G,  box5G,  box6G,  box7G,  box8G;
-          let boxMat1,boxMat2,boxMat3,boxMat4,boxMat5,boxMat6,boxMat7,boxMat8;
-           //data tbv de GUI control
-          const data = {
-           X_rotatie: 0.085, Y_rotatie: 0.01,  Z_rotatie: 0.085,
-           alpha: 0.5, kubuspositie: 0.8,
-           start_stop_rotatie: true, //true is aangevinkt
-           wolken_achtergrond: false,
-           ruitjespap: false }
-
-          init();
-          play(); //waarin de setAnimationLoop tbv render en animate worden aangeroepen
-          //Dus render en animate zijn de functies die in de animatieloop zitten
-
-          function init() {
-          scene = new THREE.Scene();
-            //als de gebruiker de grootte van het window aangepast
-          //zal addEventListener onWindowResize aaanroepen
-          window.addEventListener( 'resize', onWindowResize );
-          createBackground();
-          //createCamera, createRenderer, en onWindowResize zijn de basisfuncties
-          createCamera();
-          createRenderer();
-          onWindowResize();
-          createGrid(); //is het ruitjespapier
-          createAmbientLight();
-          createDirectionalLights();// voor 4 puntlichtjes
-          createGui(); //voor het controlvenster rechts boven
-          createGeomMatMesh(); //voor de boxen, cylinders en hun materials, samengevoegd in de groep
-          createControls();  //voor de muiscontrols
-          }
-
-      function createBackground() {
-            if (wolken_achtergrond==false)
-         {const bgColor = new THREE.Color( 0xE6FBFF );
-          scene.background = bgColor;
-          wolken_achtergrond = true;}
-            else
-          {const loader = new THREE.TextureLoader();
-          const bgTexture = loader.load('../textures/cloud.jpg');
-          scene.background = bgTexture;
-          wolken_achtergrond = false;}
-      }
-
-      function createCamera() {
-          camera = new THREE.PerspectiveCamera(
-          35, // FOV
-          window.innerWidth / window.innerHeight, // aspect ratio
-          0.1, // near clipping plane
-          100, // far clipping plane
-            );
-          camera.position.set( 0, 0, 7 );
-      }
-
-      function createRenderer() {
-          renderer = new THREE.WebGLRenderer( { antialias: true} );
-          renderer.setPixelRatio( window.devicePixelRatio );
-          renderer.setSize( window.innerWidth, window.innerHeight );
-          document.body.appendChild( renderer.domElement );
-          }
-
-      function onWindowResize() {
-          camera.aspect = window.innerWidth/ window.innerHeight;
-          camera.updateProjectionMatrix(); //met updateProjectionMatrix wordt her camera frustrum aangepast
-          renderer.setSize(window.innerWidth, window.innerHeight);
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "../build/three.module.js",
+          "three/addons/": "../jsm/"
         }
+      }
+    </script>
+
+    <script type="module">
+      import * as THREE from 'three';
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+      import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+      let scene, camera, renderer, group, gridHelper, controls;
+      const boxMeshes = [];
+      const boxMaterials = [];
+// data tbv de GUI
+      const data = {
+        X_rotatie: 0.035,
+        Y_rotatie: 0.01,
+        Z_rotatie: -0.02,
+        alpha: 0.5,
+        kubuspositie: 0.8,
+        start_stop_rotatie: true,
+        wolken_achtergrond: false,
+        ruitjespap: false
+      };
+
+      init();
+      play();
+
+      function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xE6FBFF);
+
+        camera = new THREE.PerspectiveCamera(
+          35, //FOV
+          window.innerWidth / window.innerHeight,
+          0.1,//near clipping plane
+          100 // far clipping plane
+        );
+        camera.position.set(0, 0, 7);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        window.addEventListener('resize', onWindowResize);
+
+        createGrid();
+        createAmbientLight();
+        createDirectionalLights();
+        createGeomMatMesh();
+        createControls();
+        createGui();
+      }
 
       function createGrid() {
-          gridHelper = new THREE.GridHelper( 10, 10);
-          gridHelper.rotation.x = Math.PI / 2;
-          scene.remove( gridHelper );
+        gridHelper = new THREE.GridHelper(10, 10);
+        gridHelper.rotation.x = Math.PI / 2;
+        gridHelper.visible = data.ruitjespap;
+        scene.add(gridHelper);
       }
 
       function createAmbientLight() {
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-          }
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+      }
 
-      function createDirectionalLights(x,y,z) {
-          const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-          directionalLight.position.set(x,y,z);
-          scene.add(directionalLight);
-          }
-          //geeft 4 Directionallights
-          createDirectionalLights(-2, 0, -5);
-          createDirectionalLights(2,  2, 5);
-          createDirectionalLights(-2,-2, -5);
-          createDirectionalLights(2,  2, 5);
+      function createDirectionalLights() {
+        const lightPositions = [
+          [-2, 0, -5],
+          [2, 2, 5],
+          [-2, -2, -5],
+          [2, 2, 5]
+        ];
 
-      function createGeomMatMesh() {
-          boxMat1 = new THREE.MeshPhongMaterial( {color: 0xff3333, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
-          boxMat2 = new THREE.MeshPhongMaterial( {color: 0xffd700, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
-          boxMat3 = new THREE.MeshPhongMaterial( {color: 0x00ff00, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
-          boxMat4 = new THREE.MeshPhongMaterial( {color: 0xff00ff, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
-          boxMat5 = new THREE.MeshPhongMaterial( {color: 0xcd853f, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
-          boxMat6 = new THREE.MeshPhongMaterial( {color: 0x00ffff, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
-          boxMat7 = new THREE.MeshPhongMaterial( {color: 0xff1493, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
-          boxMat8 = new THREE.MeshPhongMaterial( {color: 0x0000ff, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
-          const cylinderMatx = new THREE.MeshPhongMaterial( {color: 0xcd853f, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
-          const cylinderMaty = new THREE.MeshPhongMaterial( {color: 0x0000ff, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
-          const cylinderMatz = new THREE.MeshPhongMaterial( {color: 0x00fa9a, opacity: 0.5, transparent: true, shininess: 400,flatShading: true} );
+        lightPositions.forEach(([x, y, z]) => {
+          const light = new THREE.DirectionalLight(0xffffff, 1);
+          light.position.set(x, y, z);
+          scene.add(light);
+        });
+      }
 
-            //parameters van de BoxGeometry constructor
-            //1) breedte, 2) hoogte 3) diepte
-          box1G = new THREE.BoxGeometry( 1, 1, 1);
-          box1M = new THREE.Mesh( box1G, boxMat1 );
-          let s = data.kubuspositie;
-          box1M.position.set( -s, -s, -s );
-
-          box2G = new THREE.BoxGeometry( 1, 1, 1);
-          box2M = new THREE.Mesh( box2G, boxMat2 );
-          box2M.position.set( -s, -s, s );
-
-          box3G = new THREE.BoxGeometry( 1, 1, 1);
-          box3M = new THREE.Mesh( box3G, boxMat3 );
-          box3M.position.set( -s, s, -s );
-
-          box4G = new THREE.BoxGeometry( 1, 1, 1);
-          box4M = new THREE.Mesh( box4G, boxMat4 );
-          box4M.position.set( -s, s, s );
-
-          box5G = new THREE.BoxGeometry( 1, 1, 1);
-          box5M = new THREE.Mesh( box5G, boxMat5 );
-          box5M.position.set( s, -s, -s );
-
-          box6G = new THREE.BoxGeometry( 1, 1, 1);
-          box6M = new THREE.Mesh( box6G, boxMat6 );
-          box6M.position.set( s, -s, s );
-
-          box7G = new THREE.BoxGeometry( 1, 1, 1, 1 );
-          box7M = new THREE.Mesh( box7G, boxMat7 );
-          box7M.position.set( s,  s, -s );
-
-          box8G = new THREE.BoxGeometry( 1, 1, 1, 1 );
-          box8M = new THREE.Mesh( box8G, boxMat8 );
-          box8M.position.set( s,  s,  s );
-
-            //parameters van de CylinderBufferGeometry constructor
-            //1) radiusTop, 2) radiusBottom, 3) hoogte 4) radiale segmenten
-          const cylinderGx = new THREE.CylinderGeometry( 0.2, 0.2, 2.6, 10 );
-          const cylinderMx = new THREE.Mesh( cylinderGx, cylinderMatx );
-          cylinderMx.rotation.z = Math.PI / 2;
-
-          const cylinderGy = new THREE.CylinderGeometry( 0.2, 0.2, 2.6, 10 );
-          const cylinderMy = new THREE.Mesh( cylinderGy, cylinderMaty );
-
-          const cylinderGz = new THREE.CylinderGeometry( 0.2, 0.2, 2.6, 10 );
-          const cylinderMz = new THREE.Mesh( cylinderGz, cylinderMatz );
-          cylinderMz.rotation.x = Math.PI / 2;
-            //de meshes in een groep plaatsen
-          groep = new THREE.Group();
-          groep.add(box1M,box2M,box3M,box4M,box5M,box6M,box7M,box8M,cylinderMx,cylinderMy,cylinderMz);
-          scene.add(groep); //de groep komt in de scene die in animate gaat draaien
-        }
-          //de functie voor de muis en pijltjestoetsen controls
       function createControls() {
-          const controls = new OrbitControls( camera , renderer.domElement);
-          controls.listenToKeyEvents( window );
-           //als default wordt er naar de pijltjestoetsen geluister
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.listenToKeyEvents(window);
       }
 
       function createGui() {
-          let gui = new GUI({width: 250});
-          gui.add(data, 'X_rotatie', -0.2, 0.2);
-          gui.add(data, 'Y_rotatie', -0.2, 0.2);
-          gui.add(data, 'Z_rotatie', -0.2, 0.2);
-          gui.add(data, 'alpha', 0.5,1).onChange( opacityChange );
-          gui.add(data, 'kubuspositie', -2,2).onChange( boxPosChange );
-          gui.add(data, 'start_stop_rotatie');
-          gui.add(data, 'ruitjespap').onChange( gridOnOf);
-          gui.add(data, 'wolken_achtergrond').onChange( createBackground);
-          gui.open();
+        const gui = new GUI({ width: 250 });
+
+        gui.add(data, 'X_rotatie', -0.2, 0.2);
+        gui.add(data, 'Y_rotatie', -0.2, 0.2);
+        gui.add(data, 'Z_rotatie', -0.2, 0.2);
+        gui.add(data, 'alpha', 0.5, 1).onChange(opacityChange);
+        gui.add(data, 'kubuspositie', -2, 2).onChange(boxPosChange);
+        gui.add(data, 'start_stop_rotatie');
+        gui.add(data, 'ruitjespap').onChange(gridOnOf);
+        gui.add(data, 'wolken_achtergrond').onChange(createBackground);
+
+        gui.open();
       }
 
-       function gridOnOf(){
-            if (ruitjespap) {scene.add(gridHelper), ruitjespap = false;}
-            else {scene.remove(gridHelper), ruitjespap = true;}
-         }
-
-       function opacityChange() {
-          boxMat1.opacity = data.alpha;  boxMat2.opacity = data.alpha;
-          boxMat3.opacity = data.alpha;  boxMat4.opacity = data.alpha;
-          boxMat5.opacity = data.alpha;  boxMat6.opacity = data.alpha;
-          boxMat7.opacity = data.alpha;  boxMat8.opacity = data.alpha;
+      function createBackground() {
+        if (data.wolken_achtergrond) {
+          const loader = new THREE.TextureLoader();
+          loader.load('../textures/cloud.jpg', (texture) => {
+            scene.background = texture;
+          });
+        } else {
+          scene.background = new THREE.Color(0xE6FBFF);
+        }
       }
 
-       function boxPosChange() {
-         box1M.position.set(-data.kubuspositie, -data.kubuspositie, -data.kubuspositie);
-         box2M.position.set(-data.kubuspositie, -data.kubuspositie,  data.kubuspositie);
-         box3M.position.set(-data.kubuspositie,  data.kubuspositie, -data.kubuspositie);
-         box4M.position.set(-data.kubuspositie,  data.kubuspositie,  data.kubuspositie);
-         box5M.position.set( data.kubuspositie, -data.kubuspositie, -data.kubuspositie);
-         box6M.position.set( data.kubuspositie, -data.kubuspositie,  data.kubuspositie);
-         box7M.position.set( data.kubuspositie,  data.kubuspositie, -data.kubuspositie);
-         box8M.position.set( data.kubuspositie,  data.kubuspositie,  data.kubuspositie);
-    }
+      function gridOnOf() {
+        gridHelper.visible = data.ruitjespap;
+      }
 
-    function render() {
-         renderer.render( scene, camera );
+      function createGeomMatMesh() {
+        const boxColors = [
+          0xff3333, 0xffd700, 0x00ff00, 0xff00ff,
+          0xcd853f, 0x00ffff, 0xff1493, 0x0000ff
+        ];
+
+        const boxPositions = [
+          [-1, -1, -1],
+          [-1, -1, 1],
+          [-1, 1, -1],
+          [-1, 1, 1],
+          [1, -1, -1],
+          [1, -1, 1],
+          [1, 1, -1],
+          [1, 1, 1]
+        ];
+
+        group = new THREE.Group();
+        scene.add(group);
+
+        boxColors.forEach((color, index) => {
+          const material = new THREE.MeshPhongMaterial({
+            color,
+            opacity: data.alpha,
+            transparent: true,
+            shininess: 400,
+            flatShading: true
+          });
+
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+          const [x, y, z] = boxPositions[index];
+          mesh.position.set(x * data.kubuspositie, y * data.kubuspositie, z * data.kubuspositie);
+
+          boxMeshes.push(mesh);
+          boxMaterials.push(material);
+          group.add(mesh);
+        });
+
+        const cylinderMaterials = [
+          new THREE.MeshPhongMaterial({
+            color: 0xcd853f,
+            opacity: 0.5,
+            transparent: true,
+            shininess: 400,
+            flatShading: true
+          }),
+          new THREE.MeshPhongMaterial({
+            color: 0x0000ff,
+            opacity: 0.5,
+            transparent: true,
+            shininess: 400,
+            flatShading: true
+          }),
+          new THREE.MeshPhongMaterial({
+            color: 0x00fa9a,
+            opacity: 0.5,
+            transparent: true,
+            shininess: 400,
+            flatShading: true
+          })
+        ];
+
+        const cylinderGeometries = [
+          new THREE.CylinderGeometry(0.2, 0.2, 2.6, 10),
+          new THREE.CylinderGeometry(0.2, 0.2, 2.6, 10),
+          new THREE.CylinderGeometry(0.2, 0.2, 2.6, 10)
+        ];
+
+        const cylinderMeshes = [
+          new THREE.Mesh(cylinderGeometries[0], cylinderMaterials[0]),
+          new THREE.Mesh(cylinderGeometries[1], cylinderMaterials[1]),
+          new THREE.Mesh(cylinderGeometries[2], cylinderMaterials[2])
+        ];
+
+        cylinderMeshes[0].rotation.z = Math.PI / 2;
+        cylinderMeshes[2].rotation.x = Math.PI / 2;
+
+        cylinderMeshes.forEach((mesh) => group.add(mesh));
+      }
+
+      function opacityChange() {
+        boxMaterials.forEach((material) => {
+          material.opacity = data.alpha;
+        });
+      }
+
+      function boxPosChange() {
+        const positions = [
+          [-data.kubuspositie, -data.kubuspositie, -data.kubuspositie],
+          [-data.kubuspositie, -data.kubuspositie,  data.kubuspositie],
+          [-data.kubuspositie,  data.kubuspositie, -data.kubuspositie],
+          [-data.kubuspositie,  data.kubuspositie,  data.kubuspositie],
+          [ data.kubuspositie, -data.kubuspositie, -data.kubuspositie],
+          [ data.kubuspositie, -data.kubuspositie,  data.kubuspositie],
+          [ data.kubuspositie,  data.kubuspositie, -data.kubuspositie],
+          [ data.kubuspositie,  data.kubuspositie,  data.kubuspositie]
+        ];
+
+        boxMeshes.forEach((mesh, index) => {
+          mesh.position.set(positions[index][0], positions[index][1], positions[index][2]);
+        });
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
       function animate() {
         if (data.start_stop_rotatie) {
-            scene.rotation.z += data.Z_rotatie;
-            scene.rotation.x += data.X_rotatie;
-            scene.rotation.y += data.Y_rotatie;
-          }
-    }
+          group.rotation.x += data.X_rotatie;
+          group.rotation.y += data.Y_rotatie;
+          group.rotation.z += data.Z_rotatie;
+        }
 
-    function play() {
-            renderer.setAnimationLoop( () => {
-              animate();
-              render();
-            } );
-          }
-      </script>
+        controls.update();
+      }
 
+      function render() {
+        renderer.render(scene, camera);
+      }
+
+      function play() {
+        renderer.setAnimationLoop(() => {
+          animate();
+          render();
+        });
+      }
+    </script>
   </body>
 </html>
