@@ -1,245 +1,286 @@
 
 
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <title>shaders met 4 fragmentShaders in three.js</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="UTF-8" />
-    <style> body { margin: 0;} </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shaders met 4 fragment shaders in three.js</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+    </style>
   </head>
-<body>
+  <body>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "../build/three.module.js",
+          "three/addons/": "../jsm/"
+        }
+      }
+    </script>
 
- <script type="importmap">
-     {
-       "imports": {
-       "three": "../build/three.module.js",
-       "three/addons/": "../jsm/" }
-    }
- </script>
+    <script id="vertexShader" type="x-shader/x-vertex">
+      varying vec3 vUv;
 
-<script id="vertexShader" type="x-shader/x-vertex">
-   varying vec3 vUv; //is de positie van de x,y,z coordinaten
-   void main() {
-   vUv = position;
-   vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.);
-   gl_Position = projectionMatrix * modelViewPosition;
- }
-</script>
+      void main() {
+        vUv = position;
+        vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * modelViewPosition;
+      }
+    </script>
 
-<script id="fragmentShaderSphere" type="x-shader/x-fragment">
-   varying vec3 vUv;
-   uniform float u_time;
-   void main(){
-   float d = length(abs(vUv)-0.180) + length(abs(vUv)-0.840);
-   float pct = fract(d*sin(u_time/10.)*12.);
-   gl_FragColor = pct+vec4(vec3(0.20,0.06,0.518),0.5);
- }
-</script>
+    <script id="fragmentShaderSphere" type="x-shader/x-fragment">
+      precision highp float;
+      varying vec3 vUv;
+      uniform float u_time;
 
-<script id="fragmentShaderBoxLi" type="x-shader/x-fragment">
-  varying vec3 vUv;
-  uniform float u_time;
-  void main(){
- float d = length(abs(vUv)-0.180) * length(abs(vUv)-0.840);
-  float pct = fract(d*sin(u_time/10.)*12.);
-  gl_FragColor = pct+vec4(vec3(0.500,0.006,0.218),0.5);
- }
-</script>
+      void main() {
+        float d = length(abs(vUv) - 0.180) + length(abs(vUv) - 0.840);
+        float pct = fract(d * sin(u_time * 0.1) * 12.0);
+        vec3 tint = vec3(0.20,0.06,0.518);
+        gl_FragColor = vec4(pct + tint, 0.7);
+      }
+    </script>
 
-<script id="fragmentShaderBoxMi" type="x-shader/x-fragment">
- varying vec3 vUv;
- uniform float u_time;
- void main(){
- float d = length(abs(vUv)-0.564) - length(abs(vUv)-0.832);
- float pct = fract(d*sin(u_time/10.)*12.);
- gl_FragColor = pct+vec4(vec3(0.500,0.006,0.218),0.5);
-}
-</script>
+    <script id="fragmentShaderBoxLi" type="x-shader/x-fragment">
+      varying vec3 vUv;
+      uniform float u_time;
 
-<script id="fragmentShaderBoxRe" type="x-shader/x-fragment">
- varying vec3 vUv;
- uniform float u_time;
- void main(){
- float d = length(abs(vUv)-0.252) / length(abs(vUv)-0.344);
- float pct = fract(d*sin(u_time/10.)*12.);
- gl_FragColor = pct+vec4(vec3(0.500,0.006,0.218),0.5);
-}
-</script>
+      void main() {
+        float d = length(abs(vUv) - 0.180) * length(abs(vUv) - 0.840);
+        float pct = fract(d * sin(u_time * 0.1) * 12.0);
+        vec3 tint = vec3(0.500, 0.006, 0.218);
+        gl_FragColor = vec4(pct + tint, 0.5);
+      }
+    </script>
 
+    <script id="fragmentShaderBoxMi" type="x-shader/x-fragment">
+      varying vec3 vUv;
+      uniform float u_time;
 
-<script type="module">
- import * as THREE from 'three';
- import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
- import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-//u_time global declareren omda deze wordt gebuikt in de animatie functie
- const uniforms = {u_time: {type: 'float',value: 1.0}}
+      void main() {
+        float d = length(abs(vUv) - 0.564) - length(abs(vUv) - 0.832);
+        float pct = fract(d * sin(u_time * 0.1) * 12.0);
+        vec3 tint = vec3(0.500, 0.006, 0.218);
+        gl_FragColor = vec4(pct + tint, 0.5);
+      }
+    </script>
 
-let scene, camera, grid, renderer , boxLiM , sphereM , boxReM , boxMiM;
-//de begin waaarde van de booleans
-let ruitjes  = true; let sphere = false; let boxen = false;
-let wolken = true; let rotatie = true;
-///data tbv de GUI
-const data = {
- rotatie: true,   wolken: true,
- sphere: true, boxen: true, ruitjes: false };
+    <script id="fragmentShaderBoxRe" type="x-shader/x-fragment">
+      varying vec3 vUv;
+      uniform float u_time;
 
- init();
- play();
- function init() {
-   window.addEventListener( 'resize', onWindowResize );
-   scene = new THREE.Scene();
-   createBackground();
-   createGrid();
-   createCamera();
-   createBoxLi(); //linker box
-   createSphere();
-   createBoxMi(); //midden box
-   createBoxRe(); //rechter box
-   createGui(); //voor het controlvenster rechts boven
-   createRenderer();
-   createControls();  //voor de muiscontrols
-   onWindowResize();
- }
+      void main() {
+        float d = length(abs(vUv) - 0.252) / length(abs(vUv) - 0.344);
+        float pct = fract(d * sin(u_time * 0.1) * 12.0);
+        vec3 tint = vec3(0.500, 0.006, 0.218);
+        gl_FragColor = vec4(pct + tint, 0.5);
+      }
+    </script>
 
- function createBackground() {
-   if (wolken==false)
-      {const bgColor = new THREE.Color( 0xE6FBFF );
-      scene.background = bgColor;
-      wolken = true;}
-   else
-     {const loader = new THREE.TextureLoader();
-      const bgTexture = loader.load('../textures/cloud.jpg');
-      scene.background = bgTexture;
-      wolken = false;}
- }
+    <script type="module">
+      import * as THREE from 'three';
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+      import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
- function createGrid() {
-   const size = 10;
-   const divisions = 10;
-   grid = new THREE.GridHelper( size, divisions );
-   grid.rotation.x = Math.PI / 2;// het ruitjespapier 90 graden draaien
-   scene.remove( grid );
- }
+      const uniforms = {
+        u_time: { value: 0.0 }
+      };
 
- function createCamera(){
-   camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
-    camera.position.set( 0, 0, 2.5 );
- }
+      let scene;
+      let camera;
+      let renderer;
+      let grid;
+      let controls;
 
- function createBoxLi() {
-   let boxMat = new THREE.ShaderMaterial ({
-   uniforms: uniforms,side: THREE.DoubleSide,
-   vertexShader: document.getElementById('vertexShader').textContent,
-   fragmentShader: document.getElementById('fragmentShaderBoxLi').textContent,
-    //door onderstaande code toe te voegen werkt alpha in gl_FragColor
-   //de material zal mengen met de achtergrond en kan transparant worden
-   blending: THREE.NormalBlending, transparent: true});
+      let sphereMesh;
+      let leftBoxMesh;
+      let middleBoxMesh;
+      let rightBoxMesh;
 
-   let boxG = new THREE.BoxGeometry();
-   boxLiM = new THREE.Mesh(boxG, boxMat);
-   boxLiM.position.set(-2,0,0);
-   scene.add(boxLiM);
- }
+      const state = {
+        rotatie: true,
+        wolken: true,
+        sphere: true,
+        boxen: true,
+        ruitjes: false
+      };
 
- function createSphere() {
-   let sphereMat = new THREE.ShaderMaterial ({
-   uniforms: uniforms, side: THREE.DoubleSide,
-   vertexShader: document.getElementById('vertexShader').textContent,
-   fragmentShader: document.getElementById('fragmentShaderSphere').textContent,
-   blending: THREE.NormalBlending, transparent: true});
+      init();
 
-   let sphereG = new THREE.SphereGeometry();
-   sphereM = new THREE.Mesh(sphereG, sphereMat);
-   sphereM.position.set(0,0,0);
-   scene.add(sphereM);
- }
+      function init() {
+        scene = new THREE.Scene();
 
- function createBoxMi() {
-   let boxMat = new THREE.ShaderMaterial ({
-   uniforms: uniforms,side: THREE.DoubleSide,
-   vertexShader: document.getElementById('vertexShader').textContent,
-   fragmentShader: document.getElementById('fragmentShaderBoxMi').textContent,
-   blending: THREE.NormalBlending, transparent: true});
+        createCamera();
+        createBackground();
+        createGrid();
+        createGeometry();
+        createRenderer();
+        createControls();
+        createGui();
 
-   let boxG = new THREE.BoxGeometry();
-   boxMiM = new THREE.Mesh(boxG, boxMat);
-   boxMiM.position.set(0,0,0);
-   scene.add(boxMiM);
- }
+        window.addEventListener('resize', onWindowResize);
+        onWindowResize();
 
- function createBoxRe() {
-   let boxMat = new THREE.ShaderMaterial ({
-   uniforms: uniforms,side: THREE.DoubleSide,
-   vertexShader: document.getElementById('vertexShader').textContent,
-   fragmentShader: document.getElementById('fragmentShaderBoxRe').textContent,
-   blending: THREE.NormalBlending, transparent: true});
+        renderer.setAnimationLoop(animate);
+      }
 
-   let boxG = new THREE.BoxGeometry();
-   boxReM = new THREE.Mesh(boxG, boxMat);
-   boxReM.position.set(2,0,0);
-   scene.add(boxReM);
- }
+      function createCamera() {
+        camera = new THREE.PerspectiveCamera(
+          70,
+          window.innerWidth / window.innerHeight,
+          1,
+          1000
+        );
+        camera.position.set(0, 0, 3.0);
+      }
 
- function createGui() {
-   let gui = new GUI({width: 100});
-   gui.add(data, 'rotatie');
-   gui.add(data, 'wolken') .onChange(createBackground);
-   gui.add(data, 'sphere') .onChange(sphereOnOf);
-   gui.add(data, 'boxen')  .onChange(boxenOnOf);
-   gui.add(data, 'ruitjes').onChange(gridOnOf);
-   gui.open();
-}
+      function createBackground() {
+        if (state.wolken) {
+          const loader = new THREE.TextureLoader();
+          loader.load(
+            '../textures/cloud.jpg',
+            (texture) => {
+              scene.background = texture;
+            },
+            undefined,
+            () => {
+              scene.background = new THREE.Color(0xe6fbff);
+            }
+          );
+        } else {
+          scene.background = new THREE.Color(0xe6fbff);
+        }
+      }
 
-function sphereOnOf() {
-  if (sphere) {scene.add(sphereM), sphere = false;}
-  else {scene.remove(sphereM), sphere = true;}
-}
+      function createGrid() {
+        grid = new THREE.GridHelper(10, 10);
+        grid.rotation.x = Math.PI / 2;
+        grid.visible = state.ruitjes;
+        scene.add(grid);
+      }
+// in deze functie worden de geometrieen aangemaakt en gepositioneerd 
+// de vertex en fragmentshaders opgehaald. Al deze data wordt aan de functie createShaderMesh gegeven
+      function createGeometry() {
+        const vertexShader = document.getElementById('vertexShader').textContent;
 
-function boxenOnOf() {
- if (boxen) {scene.add(boxLiM), scene.add(boxReM), boxen = false;}
- else {scene.remove(boxLiM), scene.remove(boxReM), boxen = true;}
-}
+        leftBoxMesh = createShaderMesh(
+          vertexShader,
+          document.getElementById('fragmentShaderBoxLi').textContent,
+          new THREE.BoxGeometry(1.1, 1.1, 1.1),
+          [-2, 0, 0]
+        );
+        sphereMesh = createShaderMesh(
+          vertexShader,
+          document.getElementById('fragmentShaderSphere').textContent,
+          new THREE.SphereGeometry(0.75, 48, 48),
+          [0, 0, 0]
+        );
+        middleBoxMesh = createShaderMesh(
+          vertexShader,
+          document.getElementById('fragmentShaderBoxMi').textContent,
+          new THREE.BoxGeometry(1.1, 1.1, 1.1),
+          [0, 0, 0]
+        );
+        rightBoxMesh = createShaderMesh(
+          vertexShader,
+          document.getElementById('fragmentShaderBoxRe').textContent,
+          new THREE.BoxGeometry(1.1, 1.1, 1.1),
+          [2, 0, 0]
+        );
+      }
+//createShaderMesh maakt de materials en meshes aan
+      function createShaderMesh(vertexShader, fragmentShader, geometry, position) {
+        const material = new THREE.ShaderMaterial({
+          uniforms,
+          vertexShader,
+          fragmentShader,
+          side: THREE.DoubleSide,
+          transparent: true,
+          blending: THREE.NormalBlending
+        });
 
- function gridOnOf(){
-    if (ruitjes) {scene.add(grid), ruitjes = false;}
-    else {scene.remove(grid), ruitjes = true;}
-}
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(position[0], position[1], position[2]);
+        scene.add(mesh);
 
- function createRenderer(){
-   renderer = new THREE.WebGLRenderer();
-   renderer.setPixelRatio( window.devicePixelRatio );
-   renderer.setSize( window.innerWidth, window.innerHeight);
-   document.body.appendChild( renderer.domElement );
-   renderer.outputColorSpace = THREE.SRGBColorSpace;
- }
+       return mesh; //de meshes worden aan animate gegeven
+      }
 
- function createControls() {
-     const controls = new OrbitControls( camera , renderer.domElement);
-     controls.listenToKeyEvents( window );
-      //als default wordt er naar de pijltjestoetsen geluister
- }
+      function createRenderer() {
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        document.body.appendChild(renderer.domElement);
+      }
 
- function onWindowResize() {
-   camera.aspect = window.innerWidth/ window.innerHeight;
-   camera.updateProjectionMatrix();
-   renderer.setSize(window.innerWidth, window.innerHeight);
- }
+      function createControls() {
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.enablePan = false;
+        controls.minDistance = 1.5;
+        controls.maxDistance = 8;
+      }
 
- function render() {
-   renderer.render( scene, camera );
- }
+      function createGui() {
+        const gui = new GUI({ width: 200 });
 
- function animate() {
-   uniforms.u_time.value += 0.02;
-   if (data.rotatie){
-   sphereM.rotation.y += 0.01; sphereM.rotation.x += 0.01;
-   boxLiM.rotation.y  -= 0.01;  boxLiM.rotation.x -= 0.01;
-   boxReM.rotation.x  -= 0.01;  boxReM.rotation.y -= 0.01;}
- }
+        gui.add(state, 'rotatie');
+        gui.add(state, 'wolken').onChange(() => {
+          createBackground();
+        });
 
- function play() {
-   renderer.setAnimationLoop( () => {animate();render();} );
-}
-   </script>
- </body>
+        gui.add(state, 'sphere').onChange((value) => {
+          sphereMesh.visible = value;
+        });
+
+        gui.add(state, 'boxen').onChange((value) => {
+          leftBoxMesh.visible = value;
+          middleBoxMesh.visible = value;
+          rightBoxMesh.visible = value;
+        });
+
+        gui.add(state, 'ruitjes').onChange((value) => {
+          grid.visible = value;
+        });
+
+        gui.open();
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      function animate() {
+        uniforms.u_time.value += 0.02;
+
+        if (state.rotatie) {
+          sphereMesh.rotation.y += 0.01;
+          sphereMesh.rotation.x += 0.01;
+
+          leftBoxMesh.rotation.y -= 0.01;
+          leftBoxMesh.rotation.x -= 0.01;
+
+          middleBoxMesh.rotation.y += 0.008;
+          middleBoxMesh.rotation.x += 0.006;
+
+          rightBoxMesh.rotation.x -= 0.01;
+          rightBoxMesh.rotation.y -= 0.01;
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+      }
+    </script>
+  </body>
 </html>
