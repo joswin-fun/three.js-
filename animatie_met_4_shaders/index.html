@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shaders met 4 fragment shaders in three.js</title>
+    <title>vier shaders op boxen en sphere in three.js</title>
     <style>
       html, body {
         margin: 0;
@@ -39,11 +39,20 @@
       varying vec3 vUv;
       uniform float u_time;
 
+      vec3 palette(float t) {
+        vec3 a = vec3(0.55, 0.45, 0.75);
+        vec3 b = vec3(0.5, 0.5, 0.5); 
+        vec3 c = vec3(1.00, 1.00, 1.00);
+        vec3 d = vec3(0.00, 0.25, 0.50);
+        return a + b * cos(6.28318 * (c * t + d));
+      }
+
       void main() {
         float d = length(abs(vUv) - 0.180) + length(abs(vUv) - 0.840);
-        float pct = fract(d * sin(u_time * 0.1) * 12.0);
-        vec3 tint = vec3(0.20, 0.06, 0.518);
-        gl_FragColor = vec4(pct + tint, 0.7);
+        float pct = fract(d * sin(u_time * 0.1) *12.0);
+        vec3 tint = palette(d*sin(u_time * 0.05)*8.);
+      
+        gl_FragColor = vec4(pct / tint, 0.8);
       }
     </script>
 
@@ -52,11 +61,19 @@
       varying vec3 vUv;
       uniform float u_time;
 
+      vec3 palette(float t) {
+        vec3 a = vec3(0.55, 0.45, 0.75);
+        vec3 b = vec3(0.5, 0.5, 0.5); 
+        vec3 c = vec3(1.00, 1.00, 1.00);
+        vec3 d = vec3(0.00, 0.25, 0.50);
+        return a + b * cos(6.28318 * (c * t + d));
+      }
+
       void main() {
         float d = length(abs(vUv) - 0.180) * length(abs(vUv) - 0.840);
         float pct = fract(d * sin(u_time * 0.1) * 12.0);
-        vec3 tint = vec3(0.500, 0.006, 0.218);
-        gl_FragColor = vec4(pct + tint, 0.5);
+         vec3 tint = palette(d*sin(u_time * 0.05)*8.);
+        gl_FragColor = vec4(pct * tint, 0.5);
       }
     </script>
 
@@ -65,11 +82,19 @@
       varying vec3 vUv;
       uniform float u_time;
 
+      vec3 palette(float t) {
+        vec3 a = vec3(0.55, 0.45, 0.75);
+        vec3 b = vec3(0.5, 0.5, 0.5); 
+        vec3 c = vec3(1.00, 1.00, 1.00);
+        vec3 d = vec3(0.00, 0.25, 0.50);
+        return a + b * cos(6.28318 * (c * t + d));
+      }
+
       void main() {
         float d = length(abs(vUv) - 0.564) - length(abs(vUv) - 0.832);
         float pct = fract(d * sin(u_time * 0.1) * 12.0);
-        vec3 tint = vec3(0.500, 0.006, 0.218);
-        gl_FragColor = vec4(pct + tint, 0.5);
+        vec3 tint = palette(d*sin(u_time * 0.05)*8.);
+        gl_FragColor = vec4(pct * tint, 0.3);
       }
     </script>
 
@@ -78,11 +103,19 @@
       varying vec3 vUv;
       uniform float u_time;
 
+      vec3 palette(float t) {
+        vec3 a = vec3(0.55, 0.45, 0.75);
+        vec3 b = vec3(0.5, 0.5, 0.5); 
+        vec3 c = vec3(1.00, 1.00, 1.00);
+        vec3 d = vec3(0.00, 0.25, 0.50);
+        return a + b * cos(6.28318 * (c * t + d));
+      }
+
       void main() {
         float d = length(abs(vUv) - 0.252) / length(abs(vUv) - 0.344);
         float pct = fract(d * sin(u_time * 0.1) * 12.0);
-        vec3 tint = vec3(0.500, 0.006, 0.218);
-        gl_FragColor = vec4(pct + tint, 0.5);
+         vec3 tint = palette(d*sin(u_time * 0.05)*8.);
+        gl_FragColor = vec4(pct * tint, 0.5);
       }
     </script>
 
@@ -95,7 +128,16 @@
         u_time: { value: 0.0 }
       };
 
-      const meshes = {};
+      let scene;
+      let camera;
+      let renderer;
+      let grid;
+      let controls;
+
+      let sphereMesh;
+      let leftBoxMesh;
+      let middleBoxMesh;
+      let rightBoxMesh;
 
       const state = {
         rotatie: true,
@@ -104,12 +146,6 @@
         boxen: true,
         ruitjes: false
       };
-
-      let scene;
-      let camera;
-      let renderer;
-      let grid;
-      let controls;
 
       init();
 
@@ -138,7 +174,6 @@
           1000
         );
         camera.position.set(0, 0, 3.0);
-        camera.lookAt(0, 0, 0);
       }
 
       function createBackground() {
@@ -165,47 +200,37 @@
         grid.visible = state.ruitjes;
         scene.add(grid);
       }
-
+// in deze functie worden de geometrieen aangemaakt en gepositioneerd 
+// de vertex en fragmentshaders opgehaald.Al deze data wordt aan de functie createShaderMesh gegeven
       function createGeometry() {
         const vertexShader = document.getElementById('vertexShader').textContent;
 
-        const config = [
-          {
-            key: 'leftBox',
-            shaderId: 'fragmentShaderBoxLi',
-            geometry: new THREE.BoxGeometry(1.1, 1.1, 1.1),
-            position: [-2, 0, 0]
-          },
-          {
-            key: 'sphere',
-            shaderId: 'fragmentShaderSphere',
-            geometry: new THREE.SphereGeometry(0.75, 48, 48),
-            position: [0, 0, 0]
-          },
-          {
-            key: 'middleBox',
-            shaderId: 'fragmentShaderBoxMi',
-            geometry: new THREE.BoxGeometry(1.1, 1.1, 1.1),
-            position: [0, 0, 0]
-          },
-          {
-            key: 'rightBox',
-            shaderId: 'fragmentShaderBoxRe',
-            geometry: new THREE.BoxGeometry(1.1, 1.1, 1.1),
-            position: [2, 0, 0]
-          }
-        ];
-
-        config.forEach(({ key, shaderId, geometry, position }) => {
-          meshes[key] = createShaderMesh(
-            vertexShader,
-            document.getElementById(shaderId).textContent,
-            geometry,
-            position
-          );
-        });
+        leftBoxMesh = createShaderMesh(
+          vertexShader,
+          document.getElementById('fragmentShaderBoxLi').textContent,
+          new THREE.BoxGeometry(1.1, 1.1, 1.1),
+          [-2, 0, 0]
+        );
+        sphereMesh = createShaderMesh(
+          vertexShader,
+          document.getElementById('fragmentShaderSphere').textContent,
+          new THREE.SphereGeometry(0.75, 48, 48),
+          [0, 0, 0]
+        );
+        middleBoxMesh = createShaderMesh(
+          vertexShader,
+          document.getElementById('fragmentShaderBoxMi').textContent,
+          new THREE.BoxGeometry(1.5, 1.5, 1.5),
+          [0, 0, 0]
+        );
+        rightBoxMesh = createShaderMesh(
+          vertexShader,
+          document.getElementById('fragmentShaderBoxRe').textContent,
+          new THREE.BoxGeometry(1.1, 1.1, 1.1),
+          [2, 0, 0]
+        );
       }
-
+//createShaderMesh maakt de materials en meshes aan
       function createShaderMesh(vertexShader, fragmentShader, geometry, position) {
         const material = new THREE.ShaderMaterial({
           uniforms,
@@ -220,7 +245,7 @@
         mesh.position.set(position[0], position[1], position[2]);
         scene.add(mesh);
 
-        return mesh;
+       return mesh; //de meshes worden aan animate gegeven
       }
 
       function createRenderer() {
@@ -237,7 +262,6 @@
         controls.enablePan = false;
         controls.minDistance = 1.5;
         controls.maxDistance = 8;
-        controls.target.set(0, 0, 0);
       }
 
       function createGui() {
@@ -249,13 +273,13 @@
         });
 
         gui.add(state, 'sphere').onChange((value) => {
-          meshes.sphere.visible = value;
+          sphereMesh.visible = value;
         });
 
         gui.add(state, 'boxen').onChange((value) => {
-          meshes.leftBox.visible = value;
-          meshes.middleBox.visible = value;
-          meshes.rightBox.visible = value;
+          leftBoxMesh.visible = value;
+          middleBoxMesh.visible = value;
+          rightBoxMesh.visible = value;
         });
 
         gui.add(state, 'ruitjes').onChange((value) => {
@@ -275,17 +299,17 @@
         uniforms.u_time.value += 0.02;
 
         if (state.rotatie) {
-          meshes.sphere.rotation.y += 0.01;
-          meshes.sphere.rotation.x += 0.01;
+          sphereMesh.rotation.y += 0.01;
+          sphereMesh.rotation.x += 0.01;
 
-          meshes.leftBox.rotation.y -= 0.01;
-          meshes.leftBox.rotation.x -= 0.01;
+          leftBoxMesh.rotation.y -= 0.01;
+          leftBoxMesh.rotation.x -= 0.01;
 
-          meshes.middleBox.rotation.y += 0.008;
-          meshes.middleBox.rotation.x += 0.006;
+          middleBoxMesh.rotation.y += 0.008;
+          middleBoxMesh.rotation.x += 0.006;
 
-          meshes.rightBox.rotation.x -= 0.01;
-          meshes.rightBox.rotation.y -= 0.01;
+          rightBoxMesh.rotation.x -= 0.01;
+          rightBoxMesh.rotation.y -= 0.01;
         }
 
         controls.update();
